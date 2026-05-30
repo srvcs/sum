@@ -1,0 +1,124 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "srvcs-sum",
+    "description": "",
+    "license": {
+      "name": "Apache-2.0",
+      "identifier": "Apache-2.0"
+    },
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/": {
+      "get": {
+        "tags": [],
+        "summary": "`GET /` — service identity (srvcs service standard).",
+        "operationId": "index",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Info"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [],
+        "summary": "`POST /` — sum a list of integers.",
+        "description": "This service does no arithmetic of its own. It folds the list through\n`srvcs-add`, starting from `0`: `acc = add(acc, v)` for each element. The\nsum of the empty list is `0` and makes no dependency calls. If `add` rejects\nan element the `422` is forwarded; if `add` is unreachable this service\nreports itself degraded rather than guessing.",
+        "operationId": "evaluate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EvalRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SumResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "an element is not a valid integer (forwarded from srvcs-add)"
+          },
+          "500": {
+            "description": "srvcs-add returned an unusable response"
+          },
+          "503": {
+            "description": "the srvcs-add dependency is unavailable"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "EvalRequest": {
+        "type": "object",
+        "required": [
+          "values"
+        ],
+        "properties": {
+          "values": {
+            "type": "object",
+            "description": "The list of integers to sum. An empty list sums to `0`."
+          }
+        }
+      },
+      "Info": {
+        "type": "object",
+        "required": [
+          "service",
+          "concern",
+          "depends_on"
+        ],
+        "properties": {
+          "concern": {
+            "type": "string"
+          },
+          "depends_on": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "service": {
+            "type": "string"
+          }
+        }
+      },
+      "SumResponse": {
+        "type": "object",
+        "required": [
+          "values",
+          "result"
+        ],
+        "properties": {
+          "result": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "values": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  }
+}
