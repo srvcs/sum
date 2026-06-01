@@ -1,57 +1,65 @@
 # srvcs-sum
 
-The list-aggregation service of the srvcs.cloud distributed standard library.
+## Name
 
-Its single concern: **the sum of a list of integers.** It does no arithmetic of
-its own. It folds the list through [`srvcs-add`](https://github.com/srvcs/add),
-starting from `0`:
+| Field | Value |
+| --- | --- |
+| Service | `srvcs-sum` |
+| Slug | `sum` |
+| Repository | `srvcs/sum` |
+| Package | `srvcs-sum` |
+| Kind | `orchestrator` |
 
-```text
-acc = 0
-for v in values:
-    acc = add(acc, v)   # one HTTP call to srvcs-add per element
-```
+## Function
 
-The sum of the **empty list** is `0`, and makes no dependency calls at all.
+aggregate: sum of a list
+
+## Dependencies
+
+| Dependency | Repository |
+| --- | --- |
+| `srvcs-add` | [srvcs/add](https://github.com/srvcs/add) |
 
 ## API
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| `GET` | `/` | Service identity, concern, and dependency list |
-| `POST` | `/` | Sum the integers in `values` |
-| `GET` | `/healthz` `/readyz` `/metrics` `/openapi.json` | srvcs service standard surface |
+| `GET` | `/` | Service identity |
+| `POST` | `/` | Evaluate the service function |
+| `GET` | `/healthz` | Liveness probe |
+| `GET` | `/readyz` | Readiness probe |
+| `GET` | `/metrics` | Prometheus metrics |
+| `GET` | `/openapi.json` | OpenAPI document |
 
-```sh
-curl -s -X POST localhost:8080/ -H 'content-type: application/json' -d '{"values": [1, 2, 3, 4]}'
-# {"values":[1,2,3,4],"result":10}
-```
+## Inputs
 
-Responses:
+| Name | Type | Required |
+| --- | --- | --- |
+| `values` | `json[]` | yes |
 
-- `200 {"values": [...], "result": n}` — evaluated.
-- `422` — an element is not a valid integer, forwarded from `srvcs-add`.
-- `500` — `srvcs-add` returned an unusable response.
-- `503` — the `srvcs-add` dependency is unavailable.
+## Outputs
 
-## Dependencies
-
-- [`srvcs-add`](https://github.com/srvcs/add)
-
-A single request fans out across the dependency graph: one `sum → add` call per
-list element, and each `add` in turn validates both operands via
-`add → isnumber`.
+| Name | Type |
+| --- | --- |
+| `values` | `json[]` |
+| `result` | `integer` |
 
 ## Configuration
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `SRVCS_BIND_ADDR` | `0.0.0.0:8080` | Bind address |
-| `SRVCS_ADD_URL` | `http://127.0.0.1:8081` | Base URL of `srvcs-add` |
 | `SRVCS_ENV` | `development` | Environment label for logs |
 | `RUST_LOG` | `info,tower_http=info` | Tracing filter |
+| `SRVCS_ADD_URL` | `http://127.0.0.1:8081` | Base URL for srvcs-add |
 
-## Local checks
+## Error Behavior
+
+- `422` means the request could not be evaluated for the documented input shape.
+- `503` means a required dependency was unavailable or returned an unexpected response.
+- Dependency validation errors are forwarded when this service delegates validation.
+
+## Local Checks
 
 ```sh
 cargo fmt --check
@@ -59,10 +67,8 @@ cargo clippy --all-targets -- -D warnings
 cargo test
 ```
 
-Orchestration tests stand up a mock `srvcs-add` in-process that **actually
-computes** `a + b` from the request body, so the fold is genuinely exercised
-(e.g. `sum([1,2,3,4]) == 10`). See
-[`srvcs/platform`](https://github.com/srvcs/platform) for the shared standard.
+See the [srvcs service standard](https://github.com/srvcs/platform/blob/main/STANDARD.md) for the full operational contract.
 
-> Note: the `cargoHash` in `flake.nix` is inherited from the template and must be
-> refreshed with a `nix build` before the Nix gates pass.
+## Metadata
+
+Machine-readable service metadata lives in `srvcs.yaml`. Keep it aligned with this README when the service contract changes.
